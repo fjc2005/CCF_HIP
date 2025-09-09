@@ -1,0 +1,112 @@
+=================================================
+               CCF TCARCH Self-Test              
+=================================================
+Job started on mi100-1 at Tue Sep  9 10:10:12 AM UTC 2025
+
+STEP 1: Compiling source code...
+kernel.hip:137:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  137 |         hipMalloc(&d_block_sums, sizeof(int) * numBlocks);
+      |         ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:149:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  149 |     hipDeviceSynchronize();
+      |     ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:153:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  153 |         hipMalloc(&d_scanned_block_sums, sizeof(int) * numBlocks);
+      |         ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:159:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  159 |         hipDeviceSynchronize();
+      |         ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:161:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  161 |         hipFree(d_scanned_block_sums);
+      |         ^~~~~~~ ~~~~~~~~~~~~~~~~~~~~
+kernel.hip:162:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  162 |         hipFree(d_block_sums);
+      |         ^~~~~~~ ~~~~~~~~~~~~
+kernel.hip:170:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  170 |     hipMalloc(&d_in, sizeof(int) * (size_t)N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:171:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  171 |     hipMalloc(&d_out, sizeof(int) * (size_t)N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:173:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  173 |     hipMemcpy(d_in, input, sizeof(int) * (size_t)N, hipMemcpyHostToDevice);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:177:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  177 |     hipMemcpy(output, d_out, sizeof(int) * (size_t)N, hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:179:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  179 |     hipFree(d_in);
+      |     ^~~~~~~ ~~~~
+kernel.hip:180:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  180 |     hipFree(d_out);
+      |     ^~~~~~~ ~~~~~
+12 warnings generated when compiling for gfx908.
+kernel.hip:137:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  137 |         hipMalloc(&d_block_sums, sizeof(int) * numBlocks);
+      |         ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:149:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  149 |     hipDeviceSynchronize();
+      |     ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:153:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  153 |         hipMalloc(&d_scanned_block_sums, sizeof(int) * numBlocks);
+      |         ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:159:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  159 |         hipDeviceSynchronize();
+      |         ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:161:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  161 |         hipFree(d_scanned_block_sums);
+      |         ^~~~~~~ ~~~~~~~~~~~~~~~~~~~~
+kernel.hip:162:9: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  162 |         hipFree(d_block_sums);
+      |         ^~~~~~~ ~~~~~~~~~~~~
+kernel.hip:170:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  170 |     hipMalloc(&d_in, sizeof(int) * (size_t)N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:171:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  171 |     hipMalloc(&d_out, sizeof(int) * (size_t)N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:173:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  173 |     hipMemcpy(d_in, input, sizeof(int) * (size_t)N, hipMemcpyHostToDevice);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:177:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  177 |     hipMemcpy(output, d_out, sizeof(int) * (size_t)N, hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:179:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  179 |     hipFree(d_in);
+      |     ^~~~~~~ ~~~~
+kernel.hip:180:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  180 |     hipFree(d_out);
+      |     ^~~~~~~ ~~~~~
+12 warnings generated when compiling for host.
+Compilation successful. Executable 'prefix_sum' created.
+
+STEP 2: Running test cases...
+Found 19 test cases in testcases
+-------------------------------------------------
+Running test [1]... PASS (0.48s)
+Running test [2]... PASS (0.48s)
+Running test [3]... PASS (0.48s)
+Running test [4]... PASS (0.44s)
+Running test [5]... PASS (0.47s)
+Running test [6]... PASS (0.48s)
+Running test [7]... PASS (0.48s)
+Running test [8]... PASS (0.46s)
+Running test [9]... PASS (0.61s)
+Running test [10]... PASS (0.62s)
+Running test [11]... PASS (0.45s)
+Running test [12]... PASS (0.47s)
+Running test [13]... PASS (0.45s)
+Running test [14]... PASS (0.47s)
+Running test [15]... PASS (0.47s)
+Running test [16]... PASS (0.53s)
+Running test [17]... PASS (0.62s)
+Running test [18]... PASS (0.83s)
+Running test [19]... PASS (1.64s)
+-------------------------------------------------
+FINAL RESULT: ALL TESTS PASSED!
+
+    Passed cases: 19 / 19
+    Total execution time: 10.93 seconds
+
+Job finished at Tue Sep  9 10:10:39 AM UTC 2025
+=================================================
