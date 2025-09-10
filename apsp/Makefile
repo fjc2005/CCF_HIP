@@ -6,7 +6,7 @@ SRCS = main.cpp
 
 HEADERS = main.h
 
-CXXFLAGS = -O2
+CXXFLAGS = -O3 -std=c++17
 
 all: $(TARGET)
 
