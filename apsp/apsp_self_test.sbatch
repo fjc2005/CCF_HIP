@@ -45,7 +45,11 @@ for input_file in testcases/*.in; do
         continue
     fi
 
-    EXEC_TIME=$( { /usr/bin/time -f "%e" ./apsp "${input_file}" > "${my_output_file}"; } 2>&1 )
+    ( /usr/bin/time -f "%e" ./apsp "${input_file}" --timing > "${my_output_file}" ) 2> time_temp.txt
+    # Display timing info in log and extract execution time
+    cat time_temp.txt
+    EXEC_TIME=$(tail -1 time_temp.txt)
+    rm -f time_temp.txt
 
     if diff -u "${golden_output_file}" "${my_output_file}" >/dev/null 2>&1; then
         echo "PASS (${EXEC_TIME}s)"

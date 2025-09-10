@@ -174,20 +174,56 @@ int main(int argc, char* argv[]){
         std::fprintf(stderr, "Error: missing input file.\n");
         return 1;
     }
+    
+    // Parse command line arguments
+    bool enable_timing = false;
+    for(int i = 2; i < argc; ++i){
+        if(std::string(argv[i]) == "--timing"){
+            enable_timing = true;
+            break;
+        }
+    }
     int V = 0, E = 0;
     std::vector<int> h_dist;
+    
+    // Timer for data loading to host
+    auto start_load = std::chrono::high_resolution_clock::now();
     if(!read_graph(argv[1], V, E, h_dist)){
         std::fprintf(stderr, "Error: failed to read input file.\n");
         return 1;
+    }
+    auto end_load = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto load_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_load - start_load);
+        std::cerr << "[TIMER] Data loading to host: " << load_duration.count() << " us" << std::endl;
     }
     const int B = BLOCK_SIZE;
     const int nTiles = (V + B - 1) / B;
     int* d_dist = nullptr;
     size_t bytes = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(int);
+    
+    // Timer for GPU memory allocation
+    auto start_alloc = std::chrono::high_resolution_clock::now();
     hipCheck(hipMalloc(&d_dist, bytes), "hipMalloc d_dist");
+    auto end_alloc = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto alloc_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_alloc - start_alloc);
+        std::cerr << "[TIMER] GPU memory allocation: " << alloc_duration.count() << " us" << std::endl;
+    }
+    
+    // Timer for data transfer to device
+    auto start_h2d = std::chrono::high_resolution_clock::now();
     hipCheck(hipMemcpy(d_dist, h_dist.data(), bytes, hipMemcpyHostToDevice), "hipMemcpy H2D");
+    auto end_h2d = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto h2d_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d - start_h2d);
+        std::cerr << "[TIMER] Data transfer to device: " << h2d_duration.count() << " us" << std::endl;
+    }
     dim3 block(B,B,1);
     if(B*B > 1024){ block.x = 32; block.y = 32; }
+    
+    // Timer for GPU computation
+    auto start_gpu = std::chrono::high_resolution_clock::now();
     for(int k=0;k<nTiles;++k){
         {
             dim3 grid(1,1,1);
@@ -214,8 +250,37 @@ int main(int argc, char* argv[]){
             if(hipDeviceSynchronize() != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase3 sync failed\n"); return 1; }
         }
     }
+    auto end_gpu = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto gpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_gpu - start_gpu);
+        std::cerr << "[TIMER] GPU computation: " << gpu_duration.count() << " us" << std::endl;
+    }
+    
+    // Timer for data transfer from device
+    auto start_d2h = std::chrono::high_resolution_clock::now();
     hipCheck(hipMemcpy(h_dist.data(), d_dist, bytes, hipMemcpyDeviceToHost), "hipMemcpy D2H");
+    auto end_d2h = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto d2h_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h - start_d2h);
+        std::cerr << "[TIMER] Data transfer from device: " << d2h_duration.count() << " us" << std::endl;
+    }
+    
+    // Timer for GPU memory cleanup
+    auto start_cleanup = std::chrono::high_resolution_clock::now();
     hipFree(d_dist);
+    auto end_cleanup = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_cleanup - start_cleanup);
+        std::cerr << "[TIMER] GPU memory cleanup: " << cleanup_duration.count() << " us" << std::endl;
+    }
+    
+    // Timer for result output
+    auto start_output = std::chrono::high_resolution_clock::now();
     print_matrix(h_dist, V);
+    auto end_output = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto output_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_output - start_output);
+        std::cerr << "[TIMER] Result output: " << output_duration.count() << " us" << std::endl;
+    }
     return 0;
 }
