@@ -7,12 +7,7 @@
 #SBATCH --mem=32G
 
 # --- Script Configuration ---
-# C++ 编译器及参数
-COMPILER="hipcc"
-CXX_FLAGS=" "
-
 # 源文件和可执行文件名
-SOURCE_FILES="kernel.hip main.cpp" # 如果有多个.cpp文件，用空格隔开
 EXECUTABLE="prefix_sum"
 
 # 测试用例和输出结果的目录
@@ -25,7 +20,7 @@ VERIFIER="/home/user095/hip_programming_contest/verify.py"
 
 # 计时相关：如需关闭计时运行，将 DO_TIMING_RUN 设为 0
 TIMING_FLAG="--time"   # 或改为 --profile（程序已兼容二选一）
-DO_TIMING_RUN=1        # 1=在测试结束后追加一次计时运行并将 [TIMER] 打印到日志；0=不追加
+DO_TIMING_RUN=0        # 1=在测试结束后追加一次计时运行并将 [TIMER] 打印到日志；0=不追加
 
 # --- Script Body ---
 
@@ -46,7 +41,7 @@ mkdir -p ${MY_OUTPUT_DIR}
 
 # 2. 编译代码
 echo "STEP 1: Compiling source code..."
-${COMPILER} ${CXX_FLAGS} -o ${EXECUTABLE} ${SOURCE_FILES}
+make
 
 # 检查编译是否成功
 if [ ! -f ./${EXECUTABLE} ]; then

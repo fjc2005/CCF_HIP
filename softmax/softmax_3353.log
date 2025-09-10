@@ -1,0 +1,15 @@
+[INFO] Host: mi100-1  Time: Wed Sep 10 09:09:50 AM UTC 2025
+[INFO] Build...
+make: Nothing to be done for 'all'.
+[RUN] 10 ... PASS (1.11s)
+[RUN] 1 ... PASS (0.45s)
+[RUN] 2 ... PASS (0.46s)
+[RUN] 3 ... PASS (0.44s)
+[RUN] 4 ... PASS (0.51s)
+[RUN] 5 ... PASS (0.56s)
+[RUN] 6 ... PASS (0.49s)
+[RUN] 7 ... PASS (0.48s)
+[RUN] 8 ... PASS (0.48s)
+[RUN] 9 ... PASS (1.11s)
+[SUMMARY] 10 / 10 passed
+[DONE] All tests passed.

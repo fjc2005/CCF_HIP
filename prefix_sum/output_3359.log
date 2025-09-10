@@ -1,0 +1,328 @@
+=================================================
+               CCF TCARCH Self-Test              
+=================================================
+Job started on mi100-1 at Wed Sep 10 09:11:36 AM UTC 2025
+
+STEP 1: Compiling source code...
+Compilation successful. Executable 'prefix_sum' created.
+
+STEP 2: Running test cases...
+Found 19 test cases in testcases
+-------------------------------------------------
+Running test [1]... PASS (0.48s)
+Running test [2]... PASS (0.46s)
+Running test [3]... PASS (0.47s)
+Running test [4]... PASS (0.46s)
+Running test [5]... PASS (0.47s)
+Running test [6]... PASS (0.47s)
+Running test [7]... PASS (0.45s)
+Running test [8]... PASS (0.49s)
+Running test [9]... PASS (0.57s)
+Running test [10]... PASS (0.63s)
+Running test [11]... PASS (0.46s)
+Running test [12]... PASS (0.45s)
+Running test [13]... PASS (0.44s)
+Running test [14]... PASS (0.46s)
+Running test [15]... PASS (0.48s)
+Running test [16]... PASS (0.49s)
+Running test [17]... PASS (0.63s)
+Running test [18]... PASS (0.85s)
+Running test [19]... PASS (1.66s)
+-------------------------------------------------
+FINAL RESULT: ALL TESTS PASSED!
+
+    Passed cases: 19 / 19
+    Total execution time: 10.87 seconds
+
+Job finished at Wed Sep 10 09:12:03 AM UTC 2025
+=================================================
+
+---- Timing runs for ALL testcases (printing [TIMER] lines) ----
+[TIMING] testcase=1 (testcases/1.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.013 ms
+[TIMER] device alloc: 133.014 ms
+[TIMER] H2D copy: 321.015 ms
+[TIMER] block scan (blelloch) kernel: 0.539 ms
+[TIMER] device_scan_inclusive total: 0.543 ms
+[TIMER] D2H copy: 0.029 ms
+[TIMER] compute (solve): 454.654 ms
+[TIMER] total: 454.721 ms
+-------------------------------------------------
+[TIMING] testcase=2 (testcases/2.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.013 ms
+[TIMER] device alloc: 94.966 ms
+[TIMER] H2D copy: 319.122 ms
+[TIMER] block scan (blelloch) kernel: 0.522 ms
+[TIMER] device_scan_inclusive total: 0.526 ms
+[TIMER] D2H copy: 0.029 ms
+[TIMER] compute (solve): 414.689 ms
+[TIMER] total: 414.754 ms
+-------------------------------------------------
+[TIMING] testcase=3 (testcases/3.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.013 ms
+[TIMER] device alloc: 137.063 ms
+[TIMER] H2D copy: 317.798 ms
+[TIMER] block scan (blelloch) kernel: 0.523 ms
+[TIMER] device_scan_inclusive total: 0.527 ms
+[TIMER] D2H copy: 0.028 ms
+[TIMER] compute (solve): 455.468 ms
+[TIMER] total: 455.533 ms
+-------------------------------------------------
+[TIMING] testcase=4 (testcases/4.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.013 ms
+[TIMER] device alloc: 113.173 ms
+[TIMER] H2D copy: 322.777 ms
+[TIMER] block scan (blelloch) kernel: 0.520 ms
+[TIMER] device_scan_inclusive total: 0.524 ms
+[TIMER] D2H copy: 0.029 ms
+[TIMER] compute (solve): 436.550 ms
+[TIMER] total: 436.612 ms
+-------------------------------------------------
+[TIMING] testcase=5 (testcases/5.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.014 ms
+[TIMER] device alloc: 144.155 ms
+[TIMER] H2D copy: 318.930 ms
+[TIMER] block scan (blelloch) kernel: 0.525 ms
+[TIMER] device_scan_inclusive total: 0.530 ms
+[TIMER] D2H copy: 0.032 ms
+[TIMER] compute (solve): 463.694 ms
+[TIMER] total: 463.765 ms
+-------------------------------------------------
+[TIMING] testcase=6 (testcases/6.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.071 ms
+[TIMER] device alloc: 112.988 ms
+[TIMER] H2D copy: 324.866 ms
+[TIMER] block scan (blelloch) kernel: 0.534 ms
+[TIMER] block scan (blelloch) kernel: 0.016 ms
+[TIMER] scan block_sums (recursive): 0.018 ms
+[TIMER] add offsets kernel: 0.016 ms
+[TIMER] device_scan_inclusive total: 0.624 ms
+[TIMER] D2H copy: 0.037 ms
+[TIMER] compute (solve): 438.554 ms
+[TIMER] total: 438.677 ms
+-------------------------------------------------
+[TIMING] testcase=7 (testcases/7.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.073 ms
+[TIMER] device alloc: 92.692 ms
+[TIMER] H2D copy: 318.482 ms
+[TIMER] block scan (blelloch) kernel: 0.543 ms
+[TIMER] block scan (blelloch) kernel: 0.015 ms
+[TIMER] scan block_sums (recursive): 0.017 ms
+[TIMER] add offsets kernel: 0.015 ms
+[TIMER] device_scan_inclusive total: 0.621 ms
+[TIMER] D2H copy: 0.037 ms
+[TIMER] compute (solve): 411.868 ms
+[TIMER] total: 411.994 ms
+-------------------------------------------------
+[TIMING] testcase=8 (testcases/8.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.778 ms
+[TIMER] device alloc: 129.190 ms
+[TIMER] H2D copy: 321.262 ms
+[TIMER] block scan (blelloch) kernel: 0.579 ms
+[TIMER] block scan (blelloch) kernel: 0.015 ms
+[TIMER] scan block_sums (recursive): 0.017 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] device_scan_inclusive total: 0.667 ms
+[TIMER] D2H copy: 0.032 ms
+[TIMER] compute (solve): 451.186 ms
+[TIMER] total: 452.030 ms
+-------------------------------------------------
+[TIMING] testcase=9 (testcases/9.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 50.166 ms
+[TIMER] device alloc: 137.804 ms
+[TIMER] H2D copy: 324.587 ms
+[TIMER] block scan (blelloch) kernel: 0.581 ms
+[TIMER] block scan (blelloch) kernel: 0.023 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.015 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] scan block_sums (recursive): 0.088 ms
+[TIMER] add offsets kernel: 0.029 ms
+[TIMER] device_scan_inclusive total: 0.797 ms
+[TIMER] D2H copy: 0.823 ms
+[TIMER] compute (solve): 464.085 ms
+[TIMER] total: 514.311 ms
+-------------------------------------------------
+[TIMING] testcase=10 (testcases/10.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 49.497 ms
+[TIMER] device alloc: 96.831 ms
+[TIMER] H2D copy: 321.632 ms
+[TIMER] block scan (blelloch) kernel: 0.583 ms
+[TIMER] block scan (blelloch) kernel: 0.024 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.014 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] scan block_sums (recursive): 0.097 ms
+[TIMER] add offsets kernel: 0.029 ms
+[TIMER] device_scan_inclusive total: 0.795 ms
+[TIMER] D2H copy: 0.830 ms
+[TIMER] compute (solve): 420.193 ms
+[TIMER] total: 469.753 ms
+-------------------------------------------------
+[TIMING] testcase=11 (testcases/11.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.016 ms
+[TIMER] device alloc: 97.635 ms
+[TIMER] H2D copy: 328.413 ms
+[TIMER] block scan (blelloch) kernel: 0.526 ms
+[TIMER] device_scan_inclusive total: 0.530 ms
+[TIMER] D2H copy: 0.033 ms
+[TIMER] compute (solve): 426.653 ms
+[TIMER] total: 426.712 ms
+-------------------------------------------------
+[TIMING] testcase=12 (testcases/12.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.059 ms
+[TIMER] device alloc: 103.079 ms
+[TIMER] H2D copy: 323.489 ms
+[TIMER] block scan (blelloch) kernel: 0.539 ms
+[TIMER] block scan (blelloch) kernel: 0.016 ms
+[TIMER] scan block_sums (recursive): 0.018 ms
+[TIMER] add offsets kernel: 0.016 ms
+[TIMER] device_scan_inclusive total: 0.623 ms
+[TIMER] D2H copy: 0.036 ms
+[TIMER] compute (solve): 427.260 ms
+[TIMER] total: 427.365 ms
+-------------------------------------------------
+[TIMING] testcase=13 (testcases/13.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.218 ms
+[TIMER] device alloc: 126.029 ms
+[TIMER] H2D copy: 321.685 ms
+[TIMER] block scan (blelloch) kernel: 0.550 ms
+[TIMER] block scan (blelloch) kernel: 0.016 ms
+[TIMER] scan block_sums (recursive): 0.018 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] device_scan_inclusive total: 0.636 ms
+[TIMER] D2H copy: 0.039 ms
+[TIMER] compute (solve): 448.422 ms
+[TIMER] total: 448.686 ms
+-------------------------------------------------
+[TIMING] testcase=14 (testcases/14.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 0.553 ms
+[TIMER] device alloc: 144.762 ms
+[TIMER] H2D copy: 322.866 ms
+[TIMER] block scan (blelloch) kernel: 0.561 ms
+[TIMER] block scan (blelloch) kernel: 0.015 ms
+[TIMER] scan block_sums (recursive): 0.017 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] device_scan_inclusive total: 0.645 ms
+[TIMER] D2H copy: 0.033 ms
+[TIMER] compute (solve): 468.341 ms
+[TIMER] total: 468.942 ms
+-------------------------------------------------
+[TIMING] testcase=15 (testcases/15.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 4.493 ms
+[TIMER] device alloc: 155.616 ms
+[TIMER] H2D copy: 315.813 ms
+[TIMER] block scan (blelloch) kernel: 0.566 ms
+[TIMER] block scan (blelloch) kernel: 0.016 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.014 ms
+[TIMER] add offsets kernel: 0.015 ms
+[TIMER] scan block_sums (recursive): 0.066 ms
+[TIMER] add offsets kernel: 0.020 ms
+[TIMER] device_scan_inclusive total: 0.692 ms
+[TIMER] D2H copy: 0.089 ms
+[TIMER] compute (solve): 472.275 ms
+[TIMER] total: 476.815 ms
+-------------------------------------------------
+[TIMING] testcase=16 (testcases/16.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 14.404 ms
+[TIMER] device alloc: 119.059 ms
+[TIMER] H2D copy: 316.821 ms
+[TIMER] block scan (blelloch) kernel: 0.752 ms
+[TIMER] block scan (blelloch) kernel: 0.018 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.014 ms
+[TIMER] add offsets kernel: 0.015 ms
+[TIMER] scan block_sums (recursive): 0.081 ms
+[TIMER] add offsets kernel: 0.022 ms
+[TIMER] device_scan_inclusive total: 0.914 ms
+[TIMER] D2H copy: 0.232 ms
+[TIMER] compute (solve): 437.122 ms
+[TIMER] total: 451.579 ms
+-------------------------------------------------
+[TIMING] testcase=17 (testcases/17.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 51.082 ms
+[TIMER] device alloc: 97.678 ms
+[TIMER] H2D copy: 318.220 ms
+[TIMER] block scan (blelloch) kernel: 0.589 ms
+[TIMER] block scan (blelloch) kernel: 0.024 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.015 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] scan block_sums (recursive): 0.091 ms
+[TIMER] add offsets kernel: 0.029 ms
+[TIMER] device_scan_inclusive total: 0.831 ms
+[TIMER] D2H copy: 0.831 ms
+[TIMER] compute (solve): 417.659 ms
+[TIMER] total: 468.800 ms
+-------------------------------------------------
+[TIMING] testcase=18 (testcases/18.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 140.090 ms
+[TIMER] device alloc: 132.153 ms
+[TIMER] H2D copy: 321.111 ms
+[TIMER] block scan (blelloch) kernel: 0.613 ms
+[TIMER] block scan (blelloch) kernel: 0.022 ms
+[TIMER] block scan (blelloch) kernel: 0.013 ms
+[TIMER] scan block_sums (recursive): 0.015 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] scan block_sums (recursive): 0.084 ms
+[TIMER] add offsets kernel: 0.045 ms
+[TIMER] device_scan_inclusive total: 0.824 ms
+[TIMER] D2H copy: 2.215 ms
+[TIMER] compute (solve): 456.393 ms
+[TIMER] total: 596.550 ms
+-------------------------------------------------
+[TIMING] testcase=19 (testcases/19.in)
+verify: OK
+[TIMER] arg parse: 0.000 ms
+[TIMER] read input: 469.987 ms
+[TIMER] device alloc: 115.058 ms
+[TIMER] H2D copy: 325.538 ms
+[TIMER] block scan (blelloch) kernel: 0.755 ms
+[TIMER] block scan (blelloch) kernel: 0.020 ms
+[TIMER] block scan (blelloch) kernel: 0.014 ms
+[TIMER] scan block_sums (recursive): 0.016 ms
+[TIMER] add offsets kernel: 0.017 ms
+[TIMER] scan block_sums (recursive): 0.072 ms
+[TIMER] add offsets kernel: 0.102 ms
+[TIMER] device_scan_inclusive total: 1.068 ms
+[TIMER] D2H copy: 6.912 ms
+[TIMER] compute (solve): 448.702 ms
+[TIMER] total: 918.757 ms
+-------------------------------------------------

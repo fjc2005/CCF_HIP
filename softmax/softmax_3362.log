@@ -1,0 +1,131 @@
+[INFO] Host: mi100-1  Time: Wed Sep 10 09:12:37 AM UTC 2025
+[INFO] Build...
+hipcc -O2 main.cpp kernel.hip -o softmax
+kernel.hip:140:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  140 |     hipMalloc(&d_x, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:141:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  141 |     hipMalloc(&d_t, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:142:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  142 |     hipMalloc(&d_y, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:143:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  143 |     hipMalloc(&d_block_max, sizeof(float) * blocks_max);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:144:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  144 |     hipMalloc(&d_block_sum, sizeof(float) * blocks_max);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:145:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  145 |     hipMalloc(&d_max, sizeof(float));
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:146:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  146 |     hipMalloc(&d_sum, sizeof(float));
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:148:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  148 |     hipMemcpy(d_x, input, sizeof(float) * N, hipMemcpyHostToDevice);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:158:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  158 |     hipMemcpy(&h_m, d_max, sizeof(float), hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:166:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  166 |     hipMemcpy(&h_S, d_sum, sizeof(float), hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:173:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  173 |     hipMemcpy(output, d_y, sizeof(float) * N, hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:175:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  175 |     hipDeviceSynchronize();
+      |     ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:177:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  177 |     hipFree(d_x);
+      |     ^~~~~~~ ~~~
+kernel.hip:178:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  178 |     hipFree(d_t);
+      |     ^~~~~~~ ~~~
+kernel.hip:179:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  179 |     hipFree(d_y);
+      |     ^~~~~~~ ~~~
+kernel.hip:180:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  180 |     hipFree(d_block_max);
+      |     ^~~~~~~ ~~~~~~~~~~~
+kernel.hip:181:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  181 |     hipFree(d_block_sum);
+      |     ^~~~~~~ ~~~~~~~~~~~
+kernel.hip:182:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  182 |     hipFree(d_max);
+      |     ^~~~~~~ ~~~~~
+kernel.hip:183:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  183 |     hipFree(d_sum);
+      |     ^~~~~~~ ~~~~~
+19 warnings generated when compiling for gfx908.
+kernel.hip:140:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  140 |     hipMalloc(&d_x, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:141:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  141 |     hipMalloc(&d_t, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:142:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  142 |     hipMalloc(&d_y, sizeof(float) * N);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:143:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  143 |     hipMalloc(&d_block_max, sizeof(float) * blocks_max);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:144:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  144 |     hipMalloc(&d_block_sum, sizeof(float) * blocks_max);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:145:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  145 |     hipMalloc(&d_max, sizeof(float));
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:146:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  146 |     hipMalloc(&d_sum, sizeof(float));
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:148:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  148 |     hipMemcpy(d_x, input, sizeof(float) * N, hipMemcpyHostToDevice);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:158:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  158 |     hipMemcpy(&h_m, d_max, sizeof(float), hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:166:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  166 |     hipMemcpy(&h_S, d_sum, sizeof(float), hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:173:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  173 |     hipMemcpy(output, d_y, sizeof(float) * N, hipMemcpyDeviceToHost);
+      |     ^~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kernel.hip:175:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  175 |     hipDeviceSynchronize();
+      |     ^~~~~~~~~~~~~~~~~~~~
+kernel.hip:177:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  177 |     hipFree(d_x);
+      |     ^~~~~~~ ~~~
+kernel.hip:178:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  178 |     hipFree(d_t);
+      |     ^~~~~~~ ~~~
+kernel.hip:179:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  179 |     hipFree(d_y);
+      |     ^~~~~~~ ~~~
+kernel.hip:180:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  180 |     hipFree(d_block_max);
+      |     ^~~~~~~ ~~~~~~~~~~~
+kernel.hip:181:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  181 |     hipFree(d_block_sum);
+      |     ^~~~~~~ ~~~~~~~~~~~
+kernel.hip:182:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  182 |     hipFree(d_max);
+      |     ^~~~~~~ ~~~~~
+kernel.hip:183:5: warning: ignoring return value of function declared with 'nodiscard' attribute [-Wunused-result]
+  183 |     hipFree(d_sum);
+      |     ^~~~~~~ ~~~~~
+19 warnings generated when compiling for host.
+[RUN] 10 ... PASS (1.15s)
+[RUN] 1 ... PASS (0.50s)
+[RUN] 2 ... PASS (0.45s)
+[RUN] 3 ... PASS (0.46s)
+[RUN] 4 ... PASS (0.45s)
+[RUN] 5 ... PASS (0.46s)
+[RUN] 6 ... PASS (0.51s)
+[RUN] 7 ... PASS (0.49s)
+[RUN] 8 ... PASS (0.46s)
+[RUN] 9 ... PASS (1.12s)
+[SUMMARY] 10 / 10 passed
+[DONE] All tests passed.

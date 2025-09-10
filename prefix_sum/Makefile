@@ -6,7 +6,7 @@ SRCS = main.cpp kernel.hip
 
 HEADERS = main.h
 
-CXXFLAGS = -O2 $(EXTRA_FLAGS)
+CXXFLAGS = -O3 $(EXTRA_FLAGS)
 
 all: $(TARGET)
 
