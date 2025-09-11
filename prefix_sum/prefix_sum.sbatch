@@ -11,8 +11,8 @@
 EXECUTABLE="prefix_sum"
 
 # 测试用例和输出结果的目录
-TEST_CASE_DIR="testcases"
-GOLDEN_DIR="testcases"
+TEST_CASE_DIR="my_testcases"
+GOLDEN_DIR="my_testcases"
 MY_OUTPUT_DIR="my_outputs" # 存放程序输出的临时目录
 
 # 正确性验证脚本

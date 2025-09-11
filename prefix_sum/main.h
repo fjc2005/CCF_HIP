@@ -6,6 +6,9 @@
 #include <iomanip>
 #include <hip/hip_runtime.h>
 #include <fstream>
+#include <charconv>
+#include <cstdio>
+#include <cstdlib>
 
 extern "C" void solve(const int* input, int* output, int N);
 extern "C" void set_scan_impl(int impl);

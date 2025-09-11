@@ -105,3 +105,57 @@ for f in testcases/*.in; do ./prefix_sum "$f" --verify > my_outputs/$(basename "
 /usr/bin/time -f "%E real, %M KB" ./prefix_sum testcases/10.in --repeat 10 --impl hs > /dev/null
 ```
 
+## 高性能输出优化 — 2025-09-11
+
+### 动机
+基于 `apsp` 项目中的高效输出实现，将 `prefix_sum` 项目原本使用的标准 `std::cout` 输出方式替换为高性能的 `fast_output` 方法，以显著减少输出文件所需的时间。
+
+### 优化技术
+- **大缓冲区**：使用 32MB 的缓冲区减少系统调用频率
+- **手动整数转换**：使用 `std::to_chars` 替代格式化输出，避免格式化开销
+- **批量写入**：使用 `std::fwrite` 进行块写入，比逐个字符输出更高效
+- **stdio 加速**：
+  - `std::ios_base::sync_with_stdio(false)` 解除 C++ 流与 C stdio 的同步
+  - `setvbuf(stdout, nullptr, _IOFBF, 32 * 1024 * 1024)` 设置全缓冲模式
+
+### 实现细节
+1. **新增 `fast_output_array` 函数**：
+   - 基于 `apsp/main.cpp` 中的 `print_matrix_pinned` 函数设计
+   - 专门优化一维数组的输出（相比二维矩阵更简化）
+   - 保持与原输出完全相同的格式（数字间空格分隔，末尾换行）
+
+2. **编译时开关**：
+   - 定义 `FAST_OUTPUT` 宏，默认启用
+   - 当禁用时自动回退到标准 `std::cout` 输出方式
+
+3. **缓冲区管理**：
+   - 智能缓冲区溢出检测和刷新
+   - 为数字输出预留足够空间（最多16字节）
+   - 最终确保所有数据完全输出并刷新
+
+### 代码修改
+1. **头文件更新**（`main.h`）：
+   - 添加 `#include <charconv>` 支持 `std::to_chars`
+   - 添加 `#include <cstdio>` 和 `#include <cstdlib>` 支持 C 标准库函数
+
+2. **主程序更新**（`main.cpp`）：
+   - 添加 `fast_output_array` 函数实现
+   - 在 `main` 函数开始处添加 stdio 加速设置
+   - 将原来的循环输出替换为单次 `fast_output_array` 调用
+
+### 兼容性保证
+- 输出格式完全兼容：数字间用单个空格分隔，末尾添加换行符
+- 保持原有的输出计时功能不变
+- 支持编译时禁用优化，回退到原始输出方式
+
+### 性能收益
+- **减少系统调用**：从 O(N) 次 `operator<<` 调用减少到 O(1) 次 `fwrite` 调用
+- **避免格式化开销**：`std::to_chars` 比流操作符更高效
+- **大缓冲区**：减少内核态切换频率
+- **预期改进**：输出时间应有显著降低，特别是对于大型数据集
+
+### 测试验证
+- 输出结果与原版本完全一致
+- 保持所有现有测试用例的兼容性
+- 性能提升在使用 `--timing` 选项时可观察到输出时间的减少
+
