@@ -158,7 +158,84 @@ static bool read_graph(const char* path, int& V, int& E, std::vector<int>& dist)
     return true;
 }
 
+static bool read_graph_pinned(const char* path, int& V, int& E, int* h_dist_pinned){
+    std::ifstream fin(path);
+    if(!fin.is_open()) return false;
+    if(!(fin >> V >> E)) return false;
+    if(V <= 0){ return false; }
+    
+    size_t total_elements = static_cast<size_t>(V) * static_cast<size_t>(V);
+    // Initialize with INF
+    for(size_t i = 0; i < total_elements; ++i){
+        h_dist_pinned[i] = INF;
+    }
+    // Set diagonal to 0
+    for(int i=0;i<V;++i){ 
+        h_dist_pinned[idx_rc(i,i,V)] = 0; 
+    }
+    // Read edges
+    for(int e=0;e<E;++e){
+        int s,t,w; fin >> s >> t >> w;
+        if(s>=0 && s<V && t>=0 && t<V){
+            size_t p = idx_rc(s,t,V);
+            if(w < h_dist_pinned[p]) h_dist_pinned[p] = w;
+        }
+    }
+    return true;
+}
+
 static void print_matrix(const std::vector<int>& dist, int V){
+#if defined(FAST_OUTPUT) && FAST_OUTPUT
+    const size_t BUF_SIZE = static_cast<size_t>(32) * 1024 * 1024; // 32MB
+    std::vector<char> buffer(BUF_SIZE);
+    char* const buf_begin = buffer.data();
+    char* const buf_end = buffer.data() + buffer.size();
+    char* p = buffer.data();
+
+    for(int i=0;i<V;++i){
+        for(int j=0;j<V;++j){
+            if(j){
+                if(p >= buf_end){
+                    std::fwrite(buf_begin, 1, static_cast<size_t>(p - buf_begin), stdout);
+                    p = const_cast<char*>(buf_begin);
+                }
+                *p++ = ' ';
+            }
+            // Reserve enough space for number (up to 10 digits) and possible newline later
+            if(p + 16 > buf_end){
+                std::fwrite(buf_begin, 1, static_cast<size_t>(p - buf_begin), stdout);
+                p = const_cast<char*>(buf_begin);
+            }
+            int val = dist[idx_rc(i,j,V)];
+            auto conv = std::to_chars(p, buf_end, val);
+            // to_chars on base-10 for int should never fail given we ensured capacity
+            p = conv.ptr;
+        }
+        if(p >= buf_end){
+            std::fwrite(buf_begin, 1, static_cast<size_t>(p - buf_begin), stdout);
+            p = const_cast<char*>(buf_begin);
+        }
+        *p++ = '\n';
+        // Optional: flush per row only when buffer is large; we keep accumulating
+    }
+    if(p > buf_begin){
+        std::fwrite(buf_begin, 1, static_cast<size_t>(p - buf_begin), stdout);
+    }
+    std::fflush(stdout);
+#else
+    std::ios::fmtflags f(std::cout.flags());
+    for(int i=0;i<V;++i){
+        for(int j=0;j<V;++j){
+            if(j) std::cout << ' ';
+            std::cout << dist[idx_rc(i,j,V)];
+        }
+        std::cout << '\n';
+    }
+    std::cout.flags(f);
+#endif
+}
+
+static void print_matrix_pinned(const int* dist, int V){
 #if defined(FAST_OUTPUT) && FAST_OUTPUT
     const size_t BUF_SIZE = static_cast<size_t>(32) * 1024 * 1024; // 32MB
     std::vector<char> buffer(BUF_SIZE);
@@ -232,23 +309,53 @@ int main(int argc, char* argv[]){
     setvbuf(stdout, nullptr, _IOFBF, 32 * 1024 * 1024);
 #endif
     int V = 0, E = 0;
-    std::vector<int> h_dist;
+    
+    // First pass: read graph dimensions only 
+    {
+        std::ifstream fin(argv[1]);
+        if(!fin.is_open() || !(fin >> V >> E) || V <= 0){
+            std::fprintf(stderr, "Error: failed to read input file dimensions.\n");
+            return 1;
+        }
+    }
+    
+    // Allocate page-locked (pinned) host memory
+    int* h_dist_pinned = nullptr;
+    size_t bytes = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(int);
+    
+    auto start_host_alloc = std::chrono::high_resolution_clock::now();
+    hipCheck(hipHostMalloc(reinterpret_cast<void**>(&h_dist_pinned), bytes), "hipHostMalloc pinned");
+    auto end_host_alloc = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto host_alloc_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_host_alloc - start_host_alloc);
+        std::cerr << "[TIMER] Pinned host memory allocation: " << host_alloc_duration.count() << " us" << std::endl;
+    }
     
     // Timer for data loading to host
     auto start_load = std::chrono::high_resolution_clock::now();
-    if(!read_graph(argv[1], V, E, h_dist)){
+    if(!read_graph_pinned(argv[1], V, E, h_dist_pinned)){
         std::fprintf(stderr, "Error: failed to read input file.\n");
+        hipCheck(hipHostFree(h_dist_pinned), "hipHostFree on error");
         return 1;
     }
     auto end_load = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto load_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_load - start_load);
-        std::cerr << "[TIMER] Data loading to host: " << load_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] Data loading to pinned host memory: " << load_duration.count() << " us" << std::endl;
     }
     const int B = BLOCK_SIZE;
     const int nTiles = (V + B - 1) / B;
     int* d_dist = nullptr;
-    size_t bytes = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(int);
+    
+    // Create HIP stream for async operations
+    hipStream_t stream;
+    auto start_stream = std::chrono::high_resolution_clock::now();
+    hipCheck(hipStreamCreate(&stream), "hipStreamCreate");
+    auto end_stream = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto stream_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_stream - start_stream);
+        std::cerr << "[TIMER] HIP stream creation: " << stream_duration.count() << " us" << std::endl;
+    }
     
     // Timer for GPU memory allocation
     auto start_alloc = std::chrono::high_resolution_clock::now();
@@ -259,13 +366,27 @@ int main(int argc, char* argv[]){
         std::cerr << "[TIMER] GPU memory allocation: " << alloc_duration.count() << " us" << std::endl;
     }
     
-    // Timer for data transfer to device
+    // Timer for async data transfer to device (pinned memory H2D)
     auto start_h2d = std::chrono::high_resolution_clock::now();
-    hipCheck(hipMemcpy(d_dist, h_dist.data(), bytes, hipMemcpyHostToDevice), "hipMemcpy H2D");
-    auto end_h2d = std::chrono::high_resolution_clock::now();
+    hipCheck(hipMemcpyAsync(d_dist, h_dist_pinned, bytes, hipMemcpyHostToDevice, stream), "hipMemcpyAsync H2D pinned");
+    // Note: We don't synchronize here yet to allow potential overlap with other operations
+    auto end_h2d_launch = std::chrono::high_resolution_clock::now();
     if(enable_timing){
-        auto h2d_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d - start_h2d);
-        std::cerr << "[TIMER] Data transfer to device: " << h2d_duration.count() << " us" << std::endl;
+        auto h2d_launch_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d_launch - start_h2d);
+        std::cerr << "[TIMER] Async H2D transfer launch: " << h2d_launch_duration.count() << " us" << std::endl;
+    }
+    
+    // Synchronize stream to ensure H2D transfer completes before GPU computation
+    auto start_h2d_sync = std::chrono::high_resolution_clock::now();
+    hipCheck(hipStreamSynchronize(stream), "hipStreamSynchronize H2D");
+    auto end_h2d_sync = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto h2d_total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d_sync - start_h2d);
+        auto h2d_sync_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d_sync - start_h2d_sync);
+        double transfer_speed_mbps = (bytes / 1024.0 / 1024.0) / (h2d_total_duration.count() / 1e6);
+        std::cerr << "[TIMER] Async H2D transfer total: " << h2d_total_duration.count() << " us" 
+                  << " (sync: " << h2d_sync_duration.count() << " us, " 
+                  << std::fixed << std::setprecision(2) << transfer_speed_mbps << " MB/s)" << std::endl;
     }
     dim3 block(B,B,1);
     if(B*B > 1024){ block.x = 32; block.y = 32; }
@@ -304,18 +425,31 @@ int main(int argc, char* argv[]){
         std::cerr << "[TIMER] GPU computation: " << gpu_duration.count() << " us" << std::endl;
     }
     
-    // Timer for data transfer from device
+    // Timer for async data transfer from device (pinned memory D2H)
     auto start_d2h = std::chrono::high_resolution_clock::now();
-    hipCheck(hipMemcpy(h_dist.data(), d_dist, bytes, hipMemcpyDeviceToHost), "hipMemcpy D2H");
-    auto end_d2h = std::chrono::high_resolution_clock::now();
+    hipCheck(hipMemcpyAsync(h_dist_pinned, d_dist, bytes, hipMemcpyDeviceToHost, stream), "hipMemcpyAsync D2H pinned");
+    auto end_d2h_launch = std::chrono::high_resolution_clock::now();
     if(enable_timing){
-        auto d2h_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h - start_d2h);
-        std::cerr << "[TIMER] Data transfer from device: " << d2h_duration.count() << " us" << std::endl;
+        auto d2h_launch_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h_launch - start_d2h);
+        std::cerr << "[TIMER] Async D2H transfer launch: " << d2h_launch_duration.count() << " us" << std::endl;
+    }
+    
+    // Synchronize stream to ensure D2H transfer completes 
+    auto start_d2h_sync = std::chrono::high_resolution_clock::now();
+    hipCheck(hipStreamSynchronize(stream), "hipStreamSynchronize D2H");
+    auto end_d2h_sync = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto d2h_total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h_sync - start_d2h);
+        auto d2h_sync_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h_sync - start_d2h_sync);
+        double transfer_speed_mbps = (bytes / 1024.0 / 1024.0) / (d2h_total_duration.count() / 1e6);
+        std::cerr << "[TIMER] Async D2H transfer total: " << d2h_total_duration.count() << " us" 
+                  << " (sync: " << d2h_sync_duration.count() << " us, " 
+                  << std::fixed << std::setprecision(2) << transfer_speed_mbps << " MB/s)" << std::endl;
     }
     
     // Timer for GPU memory cleanup
     auto start_cleanup = std::chrono::high_resolution_clock::now();
-    hipFree(d_dist);
+    hipCheck(hipFree(d_dist), "hipFree d_dist");
     auto end_cleanup = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_cleanup - start_cleanup);
@@ -324,11 +458,30 @@ int main(int argc, char* argv[]){
     
     // Timer for result output
     auto start_output = std::chrono::high_resolution_clock::now();
-    print_matrix(h_dist, V);
+    print_matrix_pinned(h_dist_pinned, V);
     auto end_output = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto output_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_output - start_output);
         std::cerr << "[TIMER] Result output: " << output_duration.count() << " us" << std::endl;
     }
+    
+    // Timer for pinned host memory cleanup
+    auto start_host_cleanup = std::chrono::high_resolution_clock::now();
+    hipCheck(hipHostFree(h_dist_pinned), "hipHostFree pinned");
+    auto end_host_cleanup = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto host_cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_host_cleanup - start_host_cleanup);
+        std::cerr << "[TIMER] Pinned host memory cleanup: " << host_cleanup_duration.count() << " us" << std::endl;
+    }
+    
+    // Timer for HIP stream cleanup
+    auto start_stream_cleanup = std::chrono::high_resolution_clock::now();
+    hipCheck(hipStreamDestroy(stream), "hipStreamDestroy");
+    auto end_stream_cleanup = std::chrono::high_resolution_clock::now();
+    if(enable_timing){
+        auto stream_cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_stream_cleanup - start_stream_cleanup);
+        std::cerr << "[TIMER] HIP stream cleanup: " << stream_cleanup_duration.count() << " us" << std::endl;
+    }
+    
     return 0;
 }
