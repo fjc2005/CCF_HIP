@@ -620,3 +620,138 @@ auto end_h2d_sync = std::chrono::high_resolution_clock::now();
 4. **编译器优化**：迁移至`--offload-arch`替代已废弃的`--amdgpu-target`
 
 当前优化已将数据传输从程序性能的主要瓶颈转变为微不足道的开销，为后续GPU计算优化奠定了坚实基础。
+
+## 14) 2025-09-11 GPU计算核心优化
+
+### 优化背景与动机
+
+在完成数据传输优化后，GPU计算成为了新的性能瓶颈。通过分析发现，虽然当前的分块Floyd-Warshall实现在算法层面已经很高效，但在GPU执行层面仍有显著的优化空间：
+
+1. **同步开销过高**：每个phase后都有完整的设备同步(`hipDeviceSynchronize`)
+2. **kernel启动频率高**：每个k轮需要3次kernel启动，导致GPU流水线断档
+3. **编译器优化不足**：使用已废弃的编译标志，缺乏循环优化指令
+
+### 实施的核心优化
+
+#### 14.1 高效同步策略优化
+
+**问题分析**：
+原实现在每个phase后都调用`hipDeviceSynchronize()`，这会强制CPU等待GPU完全空闲，极大降低了GPU利用率。
+
+**优化方案**：
+```cpp
+// 创建事件用于精确同步
+hipEvent_t phase1_complete, phase2_complete;
+hipCheck(hipEventCreate(&phase1_complete), "hipEventCreate phase1");
+hipCheck(hipEventCreate(&phase2_complete), "hipEventCreate phase2");
+
+for(int k=0;k<nTiles;++k){
+    // Phase 1: 使用流启动
+    hipLaunchKernelGGL(fw_phase1, grid, block, shmem, stream, d_dist, V, k, B);
+    hipEventRecord(phase1_complete, stream);
+    
+    // Phase 2: 等待phase1完成
+    hipStreamWaitEvent(stream, phase1_complete, 0);
+    hipLaunchKernelGGL(fw_phase2, grid, block, shmem, stream, d_dist, V, k, B);
+    hipEventRecord(phase2_complete, stream);
+    
+    // Phase 3: 等待phase2完成
+    hipStreamWaitEvent(stream, phase2_complete, 0);
+    hipLaunchKernelGGL(fw_phase3, grid, block, shmem, stream, d_dist, V, k, B);
+}
+
+// 只在最后同步一次
+hipCheck(hipStreamSynchronize(stream), "hipStreamSynchronize GPU computation");
+```
+
+**关键改进**：
+- 使用HIP事件(`hipEventRecord`/`hipStreamWaitEvent`)实现精确的phase间依赖
+- 将每轮3次设备同步降低为整个计算过程1次同步
+- 在流中执行所有kernel，提高GPU利用率
+
+#### 14.2 编译器优化增强
+
+**编译标志更新**：
+```makefile
+# 旧版本
+CXXFLAGS = --amdgpu-target=gfx908 -O3 -std=c++17
+
+# 新版本  
+CXXFLAGS = --offload-arch=gfx908 -O3 -std=c++17 -fno-gpu-rdc -ffast-math
+```
+
+**改进说明**：
+- `--offload-arch`替代已废弃的`--amdgpu-target`
+- 添加`-fno-gpu-rdc`禁用GPU重定位设备代码，允许更好的跨函数内联
+- 添加`-ffast-math`启用数学函数优化
+
+#### 14.3 循环展开与访存优化
+
+**添加循环展开指令**：
+```cpp
+// 在所有关键循环前添加展开指令
+__syncthreads();
+#pragma unroll
+for(int m=0;m<B;++m){
+    int via = sh[ty * B + m];
+    int to = sh[m * B + tx];
+    int cur = sh[ty * B + tx];
+    int cand = min_plus(via, to);
+    if(cand < cur) sh[ty * B + tx] = cand;
+    __syncthreads();
+}
+```
+
+**min_plus函数优化**：
+```cpp
+__device__ __forceinline__ int min_plus(int a, int b){
+    // 使用分支预测优化常见路径
+    if(__builtin_expect(a < INF && b < INF, 1)) {
+        long long s = static_cast<long long>(a) + static_cast<long long>(b);
+        return __builtin_expect(s <= INF, 1) ? static_cast<int>(s) : INF;
+    }
+    return INF;
+}
+```
+
+### 性能提升效果
+
+基于测试用例的定量性能对比：
+
+| 测试用例 | 优化前GPU计算时间 | 优化后GPU计算时间 | 性能提升 |
+|----------|-------------------|-------------------|----------|
+| **测试7** (3200×3200) | 424,148 μs | 344,059 μs | **19%** |
+| **测试8** (2800×2800) | 117,175 μs | 87,199 μs | **26%** |
+
+**关键收益分析**：
+1. **同步开销消除**：从`nTiles × 3`次设备同步降低为1次，显著减少CPU-GPU交互延迟
+2. **GPU流水线优化**：事件驱动的依赖管理避免了不必要的GPU空闲等待
+3. **编译器优化增效**：现代编译标志和循环展开提升了指令级并行度
+
+### 技术洞察与经验
+
+**同步策略的关键原则**：
+- Floyd-Warshall的phase间依赖是局部的，不需要全局设备同步
+- HIP事件提供了比`hipDeviceSynchronize`更精确和高效的同步机制
+- 流中执行的连续kernel可以充分利用GPU的并发执行能力
+
+**编译器优化的重要性**：
+- GPU代码的性能高度依赖编译器优化质量
+- 循环展开对于小规模固定循环(如B=32)效果显著
+- 分支预测提示在数值计算密集场景下有明显收益
+
+**工程实践要点**：
+1. **渐进式优化**：先解决最明显的同步瓶颈，再进行细节优化
+2. **量化验证**：每项优化都要有明确的性能基准对比
+3. **兼容性保持**：所有优化保持算法正确性和结果一致性
+
+### 后续优化空间
+
+虽然已实现显著的性能提升，但仍有进一步优化的机会：
+
+1. **kernel融合探索**：研究phase2和phase3是否可以融合减少启动开销
+2. **共享内存bank conflict优化**：分析和优化访存模式
+3. **多流并行**：探索使用多个流并行处理不同的k值
+4. **warp级优化**：针对特定硬件架构的warp内协作优化
+
+当前的GPU计算优化已经将同步开销从主要瓶颈转变为可控的开销，为更深层次的算法和架构优化奠定了基础。

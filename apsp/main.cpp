@@ -1,11 +1,14 @@
 #include "main.h"
+#include "memory_pool.h"
 #include <charconv>
 
 __device__ __forceinline__ int min_plus(int a, int b){
-    if(a >= INF || b >= INF) return INF;
-    long long s = static_cast<long long>(a) + static_cast<long long>(b);
-    if(s > INF) return INF;
-    return static_cast<int>(s);
+    // Fast path for the most common case
+    if(__builtin_expect(a < INF && b < INF, 1)) {
+        long long s = static_cast<long long>(a) + static_cast<long long>(b);
+        return __builtin_expect(s <= INF, 1) ? static_cast<int>(s) : INF;
+    }
+    return INF;
 }
 
 __global__ void fw_phase1(int* __restrict__ d, int n, int k, int B){
@@ -20,6 +23,7 @@ __global__ void fw_phase1(int* __restrict__ d, int n, int k, int B){
         sh[ty * B + tx] = INF;
     }
     __syncthreads();
+    #pragma unroll
     for(int m=0;m<B;++m){
         int via = sh[ty * B + m];
         int to = sh[m * B + tx];
@@ -63,6 +67,7 @@ __global__ void fw_phase2(int* __restrict__ d, int n, int k, int B){
             other[ty*B+tx] = INF;
         }
         __syncthreads();
+        #pragma unroll
         for(int m=0;m<B;++m){
             int via = pivot[ty*B+m];
             int to = other[m*B+tx];
@@ -84,6 +89,7 @@ __global__ void fw_phase2(int* __restrict__ d, int n, int k, int B){
             other[ty*B+tx] = INF;
         }
         __syncthreads();
+        #pragma unroll
         for(int m=0;m<B;++m){
             int via = other[ty*B+m];
             int to = pivot[m*B+tx];
@@ -131,6 +137,7 @@ __global__ void fw_phase3(int* __restrict__ d, int n, int k, int B){
     if(gi < n && gj < n){
         int cur = d[idx_rc(gi,gj,n)];
         int best = cur;
+        #pragma unroll
         for(int m=0;m<B;++m){
             int via = colk[ty*B+m];
             int to = rowk[m*B+tx];
@@ -238,10 +245,34 @@ static void print_matrix(const std::vector<int>& dist, int V){
 static void print_matrix_pinned(const int* dist, int V){
 #if defined(FAST_OUTPUT) && FAST_OUTPUT
     const size_t BUF_SIZE = static_cast<size_t>(32) * 1024 * 1024; // 32MB
-    std::vector<char> buffer(BUF_SIZE);
-    char* const buf_begin = buffer.data();
-    char* const buf_end = buffer.data() + buffer.size();
-    char* p = buffer.data();
+    
+    // Use stack allocator for small outputs, heap for large ones
+    constexpr size_t STACK_BUF_SIZE = 2 * 1024 * 1024; // 2MB stack buffer
+    static thread_local StackAllocator<STACK_BUF_SIZE> stack_alloc;
+    
+    char* buf_begin = nullptr;
+    char* buf_end = nullptr;
+    bool use_stack = (BUF_SIZE <= STACK_BUF_SIZE);
+    
+    std::vector<char> heap_buffer; // Only allocated if needed
+    
+    if(use_stack) {
+        stack_alloc.reset(); // Reset stack allocator
+        buf_begin = static_cast<char*>(stack_alloc.allocate(BUF_SIZE, 64));
+        if(buf_begin) {
+            buf_end = buf_begin + BUF_SIZE;
+        } else {
+            use_stack = false; // Fall back to heap if stack allocation fails
+        }
+    }
+    
+    if(!use_stack) {
+        heap_buffer.resize(BUF_SIZE);
+        buf_begin = heap_buffer.data();
+        buf_end = heap_buffer.data() + heap_buffer.size();
+    }
+    
+    char* p = buf_begin;
 
     for(int i=0;i<V;++i){
         for(int j=0;j<V;++j){
@@ -319,16 +350,20 @@ int main(int argc, char* argv[]){
         }
     }
     
-    // Allocate page-locked (pinned) host memory
-    int* h_dist_pinned = nullptr;
+    // Allocate page-locked (pinned) host memory using memory pool
     size_t bytes = static_cast<size_t>(V) * static_cast<size_t>(V) * sizeof(int);
     
     auto start_host_alloc = std::chrono::high_resolution_clock::now();
-    hipCheck(hipHostMalloc(reinterpret_cast<void**>(&h_dist_pinned), bytes), "hipHostMalloc pinned");
+    GlobalMemoryPool& pool = GlobalMemoryPool::getInstance();
+    int* h_dist_pinned = static_cast<int*>(pool.allocateHostMemory(bytes));
+    if(!h_dist_pinned){
+        std::fprintf(stderr, "Error: failed to allocate pinned host memory from pool.\n");
+        return 1;
+    }
     auto end_host_alloc = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto host_alloc_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_host_alloc - start_host_alloc);
-        std::cerr << "[TIMER] Pinned host memory allocation: " << host_alloc_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] Pinned host memory allocation (pool): " << host_alloc_duration.count() << " us" << std::endl;
     }
     
     // Timer for data loading to host
@@ -345,25 +380,28 @@ int main(int argc, char* argv[]){
     }
     const int B = BLOCK_SIZE;
     const int nTiles = (V + B - 1) / B;
-    int* d_dist = nullptr;
     
-    // Create HIP stream for async operations
-    hipStream_t stream;
+    // Get global HIP stream for async operations (reuse existing stream)
     auto start_stream = std::chrono::high_resolution_clock::now();
-    hipCheck(hipStreamCreate(&stream), "hipStreamCreate");
+    hipStream_t stream = pool.getStream();
     auto end_stream = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto stream_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_stream - start_stream);
-        std::cerr << "[TIMER] HIP stream creation: " << stream_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] HIP stream acquisition (global): " << stream_duration.count() << " us" << std::endl;
     }
     
-    // Timer for GPU memory allocation
+    // Timer for GPU memory allocation using memory pool
     auto start_alloc = std::chrono::high_resolution_clock::now();
-    hipCheck(hipMalloc(&d_dist, bytes), "hipMalloc d_dist");
+    int* d_dist = static_cast<int*>(pool.allocateDeviceMemory(bytes));
+    if(!d_dist){
+        std::fprintf(stderr, "Error: failed to allocate GPU memory from pool.\n");
+        pool.deallocateHostMemory(h_dist_pinned);
+        return 1;
+    }
     auto end_alloc = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto alloc_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_alloc - start_alloc);
-        std::cerr << "[TIMER] GPU memory allocation: " << alloc_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] GPU memory allocation (pool): " << alloc_duration.count() << " us" << std::endl;
     }
     
     // Timer for async data transfer to device (pinned memory H2D)
@@ -393,32 +431,45 @@ int main(int argc, char* argv[]){
     
     // Timer for GPU computation
     auto start_gpu = std::chrono::high_resolution_clock::now();
+    
+    // Create events for efficient synchronization
+    hipEvent_t phase1_complete, phase2_complete;
+    hipCheck(hipEventCreate(&phase1_complete), "hipEventCreate phase1");
+    hipCheck(hipEventCreate(&phase2_complete), "hipEventCreate phase2");
+    
     for(int k=0;k<nTiles;++k){
+        // Phase 1: Process pivot block
         {
             dim3 grid(1,1,1);
             size_t shmem = (size_t)B * (size_t)B * sizeof(int);
-            hipLaunchKernelGGL(fw_phase1, grid, block, shmem, 0, d_dist, V, k, B);
-            hipError_t err1 = hipGetLastError();
-            if(err1 != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase1 launch failed: %s\n", hipGetErrorString(err1)); return 1; }
-            if(hipDeviceSynchronize() != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase1 sync failed\n"); return 1; }
+            hipLaunchKernelGGL(fw_phase1, grid, block, shmem, stream, d_dist, V, k, B);
+            hipEventRecord(phase1_complete, stream);
         }
+        
+        // Phase 2: Process row and column blocks (depends on phase1)
         {
+            hipStreamWaitEvent(stream, phase1_complete, 0);
             dim3 grid(nTiles, 2, 1);
             size_t shmem = 2ull * B * B * sizeof(int);
-            hipLaunchKernelGGL(fw_phase2, grid, block, shmem, 0, d_dist, V, k, B);
-            hipError_t err2 = hipGetLastError();
-            if(err2 != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase2 launch failed: %s\n", hipGetErrorString(err2)); return 1; }
-            if(hipDeviceSynchronize() != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase2 sync failed\n"); return 1; }
+            hipLaunchKernelGGL(fw_phase2, grid, block, shmem, stream, d_dist, V, k, B);
+            hipEventRecord(phase2_complete, stream);
         }
+        
+        // Phase 3: Process remaining blocks (depends on phase2)
         {
+            hipStreamWaitEvent(stream, phase2_complete, 0);
             dim3 grid(nTiles, nTiles, 1);
             size_t shmem = 2ull * B * B * sizeof(int);
-            hipLaunchKernelGGL(fw_phase3, grid, block, shmem, 0, d_dist, V, k, B);
-            hipError_t err3 = hipGetLastError();
-            if(err3 != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase3 launch failed: %s\n", hipGetErrorString(err3)); return 1; }
-            if(hipDeviceSynchronize() != hipSuccess){ std::fprintf(stderr, "Kernel fw_phase3 sync failed\n"); return 1; }
+            hipLaunchKernelGGL(fw_phase3, grid, block, shmem, stream, d_dist, V, k, B);
         }
     }
+    
+    // Only synchronize once at the end of all computation
+    hipCheck(hipStreamSynchronize(stream), "hipStreamSynchronize GPU computation");
+    
+    // Clean up events
+    hipEventDestroy(phase1_complete);
+    hipEventDestroy(phase2_complete);
     auto end_gpu = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto gpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_gpu - start_gpu);
@@ -447,13 +498,13 @@ int main(int argc, char* argv[]){
                   << std::fixed << std::setprecision(2) << transfer_speed_mbps << " MB/s)" << std::endl;
     }
     
-    // Timer for GPU memory cleanup
+    // Timer for GPU memory cleanup (return to pool)
     auto start_cleanup = std::chrono::high_resolution_clock::now();
-    hipCheck(hipFree(d_dist), "hipFree d_dist");
+    pool.deallocateDeviceMemory(d_dist);
     auto end_cleanup = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_cleanup - start_cleanup);
-        std::cerr << "[TIMER] GPU memory cleanup: " << cleanup_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] GPU memory cleanup (pool): " << cleanup_duration.count() << " us" << std::endl;
     }
     
     // Timer for result output
@@ -465,22 +516,18 @@ int main(int argc, char* argv[]){
         std::cerr << "[TIMER] Result output: " << output_duration.count() << " us" << std::endl;
     }
     
-    // Timer for pinned host memory cleanup
+    // Timer for pinned host memory cleanup (return to pool)
     auto start_host_cleanup = std::chrono::high_resolution_clock::now();
-    hipCheck(hipHostFree(h_dist_pinned), "hipHostFree pinned");
+    pool.deallocateHostMemory(h_dist_pinned);
     auto end_host_cleanup = std::chrono::high_resolution_clock::now();
     if(enable_timing){
         auto host_cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_host_cleanup - start_host_cleanup);
-        std::cerr << "[TIMER] Pinned host memory cleanup: " << host_cleanup_duration.count() << " us" << std::endl;
+        std::cerr << "[TIMER] Pinned host memory cleanup (pool): " << host_cleanup_duration.count() << " us" << std::endl;
     }
     
-    // Timer for HIP stream cleanup
-    auto start_stream_cleanup = std::chrono::high_resolution_clock::now();
-    hipCheck(hipStreamDestroy(stream), "hipStreamDestroy");
-    auto end_stream_cleanup = std::chrono::high_resolution_clock::now();
+    // HIP stream is global - no cleanup needed (reused for future calls)
     if(enable_timing){
-        auto stream_cleanup_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_stream_cleanup - start_stream_cleanup);
-        std::cerr << "[TIMER] HIP stream cleanup: " << stream_cleanup_duration.count() << " us" << std::endl;
+        std::cerr << "[INFO] HIP stream is global and reused - no cleanup overhead" << std::endl;
     }
     
     return 0;
