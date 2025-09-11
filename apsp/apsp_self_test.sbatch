@@ -24,8 +24,8 @@ echo "Compilation successful."
 
 TOTAL_TIME=0.0
 PASSED_COUNT=0
-TEST_COUNT=$(ls -1q testcases/*.in | wc -l)
-
+TEST_COUNT=$(ls -1q testcases1/*.in | wc -l)
+TEST_CASE_DIR="testcases1"
 echo "STEP 2: Running test cases..."
 echo "Found ${TEST_COUNT} test cases in testcases/"
 echo "-------------------------------------------------"
@@ -34,9 +34,9 @@ MY_OUTPUT_DIR="my_outputs"
 rm -rf "${MY_OUTPUT_DIR}"
 mkdir -p "${MY_OUTPUT_DIR}"
 
-for input_file in testcases/*.in; do
+for input_file in $(ls -1 ${TEST_CASE_DIR}/*.in | sort -V); do
     base_name=$(basename "${input_file}" .in)
-    golden_output_file="testcases/${base_name}.out"
+    golden_output_file="${TEST_CASE_DIR}/${base_name}.out"
     my_output_file="${MY_OUTPUT_DIR}/${base_name}.myout"
 
     echo -n "Running test [${base_name}]... "

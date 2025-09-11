@@ -1,0 +1,9 @@
+apsp/testcases1/*
+apsp/*.log
+apsp/my_outputs/*
+
+prefix_sum/*.log
+prefix_sum/my_outputs/*
+
+softmax/*.log
+softmax/my_outputs/*

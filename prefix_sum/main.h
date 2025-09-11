@@ -14,5 +14,6 @@ extern "C" void set_scan_impl(int impl);
 extern bool g_enable_timing;
 void print_timing(const char* label, double ms);
 void flush_timings();
+extern double g_print_overhead_ms;
 
 #endif 

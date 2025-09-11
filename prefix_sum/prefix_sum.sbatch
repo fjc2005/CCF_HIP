@@ -18,9 +18,7 @@ MY_OUTPUT_DIR="my_outputs" # 存放程序输出的临时目录
 # 正确性验证脚本
 VERIFIER="/home/user095/hip_programming_contest/verify.py"
 
-# 计时相关：如需关闭计时运行，将 DO_TIMING_RUN 设为 0
-TIMING_FLAG="--time"   # 或改为 --profile（程序已兼容二选一）
-DO_TIMING_RUN=0        # 1=在测试结束后追加一次计时运行并将 [TIMER] 打印到日志；0=不追加
+TIMING_FLAG="--timing"   # 或改为 --profile（程序已兼容二选一）
 
 # --- Script Body ---
 
@@ -75,9 +73,18 @@ for input_file in $(ls -1 ${TEST_CASE_DIR}/*.in | sort -V); do
         continue
     fi
     
-    # 运行并计时。注意：这里的调用方式是 ./prefix_sum <input_file>
-    # 使用 /usr/bin/time 命令，并将时间输出 (stderr) 捕获到 EXEC_TIME 变量
-    EXEC_TIME=$( { /usr/bin/time -f "%e" ./${EXECUTABLE} "${input_file}" > "${my_output_file}"; } 2>&1 )
+    # 运行并计时：将 /usr/bin/time 的输出单独写入文件，避免程序的 [TIMER] 日志(在 stderr)污染数值解析
+    etime_file="${MY_OUTPUT_DIR}/${base_name}.etime"
+    stderr_file="${MY_OUTPUT_DIR}/${base_name}.stderr"
+    rm -f "${etime_file}" "${stderr_file}"
+    /usr/bin/time -f "%e" -o "${etime_file}" ./${EXECUTABLE} "${input_file}" "${TIMING_FLAG}" > "${my_output_file}" 2> "${stderr_file}"
+    # 回显 [TIMER] 日志到主日志，便于调试
+    if [ -s "${stderr_file}" ]; then
+        echo "[PROGRAM STDERR]" >> "${SLURM_OUT:-/dev/stdout}" 2>/dev/null || true
+        cat "${stderr_file}" || true
+    fi
+    # 读取纯数值执行时间
+    EXEC_TIME=$(awk 'NR==1{print $1}' "${etime_file}")
     
     # 调用 Python 验证器进行比较
     if python3 ${VERIFIER} "${my_output_file}" "${golden_output_file}" >/dev/null 2>&1; then
@@ -108,29 +115,3 @@ echo "    Total execution time: ${TOTAL_TIME} seconds"
 echo ""
 echo "Job finished at $(date)"
 echo "================================================="
-
-# 6. （可选）追加计时运行：仅打印正确与否以及 [TIMER] 统计（不打印前缀和）
-if [ "${DO_TIMING_RUN}" = "1" ]; then
-    echo ""
-    echo "---- Timing runs for ALL testcases (printing [TIMER] lines) ----"
-    for input_file in $(ls -1 ${TEST_CASE_DIR}/*.in | sort -V); do
-        base_name=$(basename "${input_file}" .in)
-        golden_output_file="${GOLDEN_DIR}/${base_name}.out"
-        tmp_out="${MY_OUTPUT_DIR}/${base_name}.timing.myout"
-        echo "[TIMING] testcase=${base_name} (${input_file})"
-        # 先进行一次仅用于正确性校验的运行：将前缀和输出重定向到临时文件
-        ./${EXECUTABLE} "${input_file}" > "${tmp_out}"
-        if python3 ${VERIFIER} "${tmp_out}" "${golden_output_file}" >/dev/null 2>&1; then
-            echo "verify: OK"
-        else
-            echo "verify: MISMATCH"
-            echo "Your output is in: ${tmp_out}"
-            echo "The correct output is in: ${golden_output_file}"
-            echo "Aborting timing runs."
-            exit 1
-        fi
-        # 再进行一次计时运行：计时模式下 main.cpp 不会打印前缀和，只有 [TIMER]
-        ./${EXECUTABLE} "${input_file}" ${TIMING_FLAG}
-        echo "-------------------------------------------------"
-    done
-fi
