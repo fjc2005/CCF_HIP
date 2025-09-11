@@ -24,8 +24,8 @@ echo "Compilation successful."
 
 TOTAL_TIME=0.0
 PASSED_COUNT=0
-TEST_COUNT=$(ls -1q testcases1/*.in | wc -l)
-TEST_CASE_DIR="testcases1"
+TEST_COUNT=$(ls -1q testcases/*.in | wc -l)
+TEST_CASE_DIR="testcases"
 echo "STEP 2: Running test cases..."
 echo "Found ${TEST_COUNT} test cases in testcases/"
 echo "-------------------------------------------------"

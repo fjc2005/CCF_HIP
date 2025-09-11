@@ -149,6 +149,7 @@ extern "C" void solve(const float* input, float* output, int N) {
     float *d_block_max = nullptr, *d_block_sum = nullptr;
     float *d_max = nullptr, *d_sum = nullptr;
 
+    auto start_alloc = std::chrono::high_resolution_clock::now();
     HIP_CHECK(hipMalloc(&d_x, sizeof(float) * N));
     HIP_CHECK(hipMalloc(&d_t, sizeof(float) * N));
     HIP_CHECK(hipMalloc(&d_y, sizeof(float) * N));
@@ -156,10 +157,24 @@ extern "C" void solve(const float* input, float* output, int N) {
     HIP_CHECK(hipMalloc(&d_block_sum, sizeof(float) * blocks_max));
     HIP_CHECK(hipMalloc(&d_max, sizeof(float)));
     HIP_CHECK(hipMalloc(&d_sum, sizeof(float)));
+    HIP_CHECK(hipDeviceSynchronize());
+    if (g_enable_timing) {
+        auto end_alloc = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_alloc - start_alloc);
+        std::cerr << "[TIMER] GPU memory allocation: " << dur.count() << " us" << std::endl;
+    }
 
+    auto start_h2d = std::chrono::high_resolution_clock::now();
     HIP_CHECK(hipMemcpy(d_x, input, sizeof(float) * N, hipMemcpyHostToDevice));
+    HIP_CHECK(hipDeviceSynchronize());
+    if (g_enable_timing) {
+        auto end_h2d = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_h2d - start_h2d);
+        std::cerr << "[TIMER] Data transfer to device: " << dur.count() << " us" << std::endl;
+    }
 
     // 1) 计算最大值 m
+    auto start_gpu = std::chrono::high_resolution_clock::now();
     size_t shmem = threads * sizeof(float);
     hipLaunchKernelGGL(kernel_block_max, dim3(blocks_max), dim3(threads), shmem, 0, d_x, N, d_block_max);
     HIP_CHECK(hipGetLastError());
@@ -185,12 +200,26 @@ extern "C" void solve(const float* input, float* output, int N) {
     // 3) 归一化得到 y
     hipLaunchKernelGGL(kernel_normalize, dim3(blocks_max), dim3(threads), 0, 0, d_t, N, h_S, d_y);
     HIP_CHECK(hipGetLastError());
+    HIP_CHECK(hipDeviceSynchronize());
+    if (g_enable_timing) {
+        auto end_gpu = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_gpu - start_gpu);
+        std::cerr << "[TIMER] GPU computation(Solve): " << dur.count() << " us" << std::endl;
+    }
 
     // 拷回结果
+    auto start_d2h = std::chrono::high_resolution_clock::now();
     HIP_CHECK(hipMemcpy(output, d_y, sizeof(float) * N, hipMemcpyDeviceToHost));
+    HIP_CHECK(hipDeviceSynchronize());
+    if (g_enable_timing) {
+        auto end_d2h = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_d2h - start_d2h);
+        std::cerr << "[TIMER] Data transfer from device: " << dur.count() << " us" << std::endl;
+    }
 
     HIP_CHECK(hipDeviceSynchronize());
 
+    auto start_cleanup = std::chrono::high_resolution_clock::now();
     HIP_CHECK(hipFree(d_x));
     HIP_CHECK(hipFree(d_t));
     HIP_CHECK(hipFree(d_y));
@@ -198,4 +227,10 @@ extern "C" void solve(const float* input, float* output, int N) {
     HIP_CHECK(hipFree(d_block_sum));
     HIP_CHECK(hipFree(d_max));
     HIP_CHECK(hipFree(d_sum));
+    HIP_CHECK(hipDeviceSynchronize());
+    if (g_enable_timing) {
+        auto end_cleanup = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_cleanup - start_cleanup);
+        std::cerr << "[TIMER] GPU memory cleanup: " << dur.count() << " us" << std::endl;
+    }
 }

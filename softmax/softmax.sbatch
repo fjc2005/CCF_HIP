@@ -12,9 +12,16 @@ set -euo pipefail
 ROOT="/home/user095/hip_programming_contest/softmax"
 cd "$ROOT"
 
+echo "================================================="
+echo "                 Softmax Self-Test               "
+echo "================================================="
 echo "[INFO] Host: $(hostname)  Time: $(date)"
-echo "[INFO] Build..."
+echo ""
+
+echo "[STEP 1] Clean & Build"
+make clean >/dev/null 2>&1 || true
 make | cat
+echo "[INFO] Build done."
 
 EXEC="./softmax"
 if [ ! -x "$EXEC" ]; then
@@ -25,20 +32,43 @@ fi
 VERIFIER="$ROOT/verify.py"
 OUTDIR="$ROOT/my_outputs"
 GOLDEN="$ROOT/testcases"
+rm -rf "$OUTDIR"
 mkdir -p "$OUTDIR"
+
+if [ ! -f "$VERIFIER" ]; then
+  echo "[ERROR] verifier not found: $VERIFIER"
+  exit 1
+fi
 
 TOTAL=0
 PASS=0
 TOTAL_TIME=0.0
 
-while IFS= read -r in_file; do
+TEST_COUNT=$(find "$GOLDEN" -maxdepth 1 -type f -name "*.in" | wc -l | awk '{print $1}')
+echo "[STEP 2] Run test cases"
+echo "[INFO] Found ${TEST_COUNT} test cases in $(realpath "$GOLDEN")"
+echo "-------------------------------------------------"
+
+if [ "$TEST_COUNT" -eq 0 ]; then
+  echo "[WARN] No testcases found under $GOLDEN"
+  echo "[SUMMARY] 0 / 0 passed"
+  echo "[TIME] Total time: 0.0s"
+  exit 0
+fi
+
+while IFS= read -r -d '' in_file; do
   base=$(basename "$in_file" .in)
   golden="$GOLDEN/$base.out"
   myout="$OUTDIR/$base.myout"
   echo -n "[RUN] $base ... "
-  /usr/bin/time -f "%e" $EXEC "$in_file" > "$myout" 2>time.tmp || { echo "RUN FAIL"; exit 1; }
-  t=$(cat time.tmp)
-  rm -f time.tmp
+  tfile=$(mktemp -p "$ROOT" softmax_time_XXXXXX)
+  (/usr/bin/time -f "%e" $EXEC "$in_file" --timing > "$myout") 2>"$tfile" || { echo "RUN FAIL"; rm -f "$tfile"; exit 1; }
+  t=$(tail -n 1 "$tfile")
+  rm -f "$tfile"
+  if [ ! -f "$golden" ]; then
+    echo "SKIPPED. Reason: golden not found: $golden"
+    continue
+  fi
   if python3 "$VERIFIER" "$myout" "$golden" >/dev/null 2>&1; then
     echo "PASS (${t}s)"
     PASS=$((PASS+1))
@@ -51,7 +81,7 @@ while IFS= read -r in_file; do
   # 浮点累加总时间（避免依赖 bc）
   TOTAL_TIME=$(awk -v a="$TOTAL_TIME" -v b="$t" 'BEGIN{printf "%.6f", a + b}')
   TOTAL=$((TOTAL+1))
-done < <(printf "%s\n" "$ROOT"/testcases/*.in | sort -V)
+done < <(find "$GOLDEN" -maxdepth 1 -type f -name "*.in" -print0 | sort -zV)
 
 echo "[SUMMARY] $PASS / $TOTAL passed"
 echo "[TIME] Total time: ${TOTAL_TIME}s"
